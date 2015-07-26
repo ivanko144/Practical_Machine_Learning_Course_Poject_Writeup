@@ -130,108 +130,117 @@ testing.dummyObj &lt;- dummyVars(~ user_name , data = testing)
 #replace factors with ...
 testing.dummy &lt;- cbind(predict(testing.dummyObj, newdata=testing), testing[, -1])</code></pre>
 </div>
-<div id="prepare-for-cross-validation-k-fold-k3" class="section level3">
-<h3>4. Prepare for cross-validation (K-Fold k=3)</h3>
-<p>We prepare 3 folds from training dataset and run processing cycle in each folder. Then we average results.</p>
-<pre class="r"><code>training.dummy.fold &lt;- training.dummy</code></pre>
+<div id="prepare-for-cross-validation-k-fold-k4" class="section level3">
+<h3>4. Prepare for cross-validation (K-Fold k=4)</h3>
+<p>We prepare 4 folds from training dataset and run processing cycle in each folder. Then we average results.</p>
+<pre class="r"><code>folds.trn &lt;- createFolds(y=training.dummy$classe,k=4,list=TRUE,returnTrain=TRUE)
+folds.tst &lt;- createFolds(y=training.dummy$classe,k=4,list=TRUE,returnTrain=FALSE)
+#run start cycle on training dataset with random splitting</code></pre>
 </div>
 <div id="processing-cycle" class="section level3">
 <h3>5. Processing cycle</h3>
 <div id="splitting-data-60-training-40-testing" class="section level4">
 <h4>5.1 Splitting data (60% training, 40% testing)</h4>
-<pre class="r"><code>inTrain &lt;- createDataPartition(y=training.dummy.fold$classe, times=1, p=0.6, list=FALSE)
-training.training &lt;- training.dummy.fold[inTrain,]
-training.testing &lt;- training.dummy.fold[-inTrain,]</code></pre>
+<pre class="r"><code>inTrain &lt;- createDataPartition(y=training.dummy$classe, times=1, p=0.6, list=FALSE)
+training.training &lt;- training.dummy[inTrain,]
+training.testing &lt;- training.dummy[-inTrain,]</code></pre>
 </div>
-</div>
-<div id="try-different-machine-learning-algorithms" class="section level3">
-<h3>5.3 Try different machine learning algorithms;</h3>
+<div id="try-different-machine-learning-algorithms" class="section level4">
+<h4>5.2 Try different machine learning algorithms;</h4>
 <p>Tree</p>
 <pre class="r"><code>modelTree0 &lt;- rpart(classe ~ ., method = &quot;class&quot;, data = training.training)
 aaTree0 &lt;- predict(modelTree0, newdata = training.testing, type = &quot;class&quot;)</code></pre>
 <p>RandomForest</p>
 <pre class="r"><code>modelRF0 &lt;- randomForest(classe ~ ., data = training.training, na.action = na.omit, ntree=1000)
 aaRF0 &lt;- predict(modelRF0, newdata = training.testing, type = &quot;class&quot;)</code></pre>
-<p>Check quality</p>
+</div>
+<div id="check-quality" class="section level4">
+<h4>5.3 Check quality</h4>
 <pre class="r"><code>confusionMatrix(aaTree0, training.testing$classe)</code></pre>
 <pre><code>## Confusion Matrix and Statistics
 ## 
 ##           Reference
 ## Prediction    A    B    C    D    E
-##          A 2107  159   13   31   21
-##          B   55 1083   52   73   35
-##          C    6   61 1181   84   94
-##          D   52  108   37  949   97
-##          E   12  107   85  149 1195
+##          A 2054  216   59   63   25
+##          B   91 1208   81   25   28
+##          C    0   40 1171   51    5
+##          D   83   50   56 1087   95
+##          E    4    4    1   60 1289
 ## 
 ## Overall Statistics
 ##                                           
-##                Accuracy : 0.8304          
-##                  95% CI : (0.8219, 0.8386)
+##                Accuracy : 0.8678          
+##                  95% CI : (0.8601, 0.8753)
 ##     No Information Rate : 0.2845          
 ##     P-Value [Acc &gt; NIR] : &lt; 2.2e-16       
 ##                                           
-##                   Kappa : 0.7851          
+##                   Kappa : 0.8324          
 ##  Mcnemar's Test P-Value : &lt; 2.2e-16       
 ## 
 ## Statistics by Class:
 ## 
 ##                      Class: A Class: B Class: C Class: D Class: E
-## Sensitivity            0.9440   0.7134   0.8633   0.7379   0.8287
-## Specificity            0.9601   0.9660   0.9622   0.9552   0.9449
-## Pos Pred Value         0.9039   0.8344   0.8282   0.7635   0.7720
-## Neg Pred Value         0.9773   0.9336   0.9709   0.9490   0.9608
+## Sensitivity            0.9203   0.7958   0.8560   0.8453   0.8939
+## Specificity            0.9353   0.9644   0.9852   0.9567   0.9892
+## Pos Pred Value         0.8498   0.8430   0.9242   0.7929   0.9492
+## Neg Pred Value         0.9672   0.9517   0.9701   0.9693   0.9764
 ## Prevalence             0.2845   0.1935   0.1744   0.1639   0.1838
-## Detection Rate         0.2685   0.1380   0.1505   0.1210   0.1523
-## Detection Prevalence   0.2971   0.1654   0.1817   0.1584   0.1973
-## Balanced Accuracy      0.9520   0.8397   0.9127   0.8466   0.8868</code></pre>
+## Detection Rate         0.2618   0.1540   0.1492   0.1385   0.1643
+## Detection Prevalence   0.3081   0.1826   0.1615   0.1747   0.1731
+## Balanced Accuracy      0.9278   0.8801   0.9206   0.9010   0.9416</code></pre>
 <pre class="r"><code>confusionMatrix(aaRF0, training.testing$classe)</code></pre>
 <pre><code>## Confusion Matrix and Statistics
 ## 
 ##           Reference
 ## Prediction    A    B    C    D    E
-##          A 2232    2    0    0    0
-##          B    0 1516    6    0    0
-##          C    0    0 1362    9    0
-##          D    0    0    0 1276    3
-##          E    0    0    0    1 1439
+##          A 2232    4    0    0    0
+##          B    0 1514    2    0    0
+##          C    0    0 1366   10    0
+##          D    0    0    0 1275    0
+##          E    0    0    0    1 1442
 ## 
 ## Overall Statistics
 ##                                           
-##                Accuracy : 0.9973          
-##                  95% CI : (0.9959, 0.9983)
+##                Accuracy : 0.9978          
+##                  95% CI : (0.9965, 0.9987)
 ##     No Information Rate : 0.2845          
 ##     P-Value [Acc &gt; NIR] : &lt; 2.2e-16       
 ##                                           
-##                   Kappa : 0.9966          
+##                   Kappa : 0.9973          
 ##  Mcnemar's Test P-Value : NA              
 ## 
 ## Statistics by Class:
 ## 
 ##                      Class: A Class: B Class: C Class: D Class: E
-## Sensitivity            1.0000   0.9987   0.9956   0.9922   0.9979
-## Specificity            0.9996   0.9991   0.9986   0.9995   0.9998
-## Pos Pred Value         0.9991   0.9961   0.9934   0.9977   0.9993
-## Neg Pred Value         1.0000   0.9997   0.9991   0.9985   0.9995
+## Sensitivity            1.0000   0.9974   0.9985   0.9914   1.0000
+## Specificity            0.9993   0.9997   0.9985   1.0000   0.9998
+## Pos Pred Value         0.9982   0.9987   0.9927   1.0000   0.9993
+## Neg Pred Value         1.0000   0.9994   0.9997   0.9983   1.0000
 ## Prevalence             0.2845   0.1935   0.1744   0.1639   0.1838
-## Detection Rate         0.2845   0.1932   0.1736   0.1626   0.1834
-## Detection Prevalence   0.2847   0.1940   0.1747   0.1630   0.1835
-## Balanced Accuracy      0.9998   0.9989   0.9971   0.9959   0.9989</code></pre>
+## Detection Rate         0.2845   0.1930   0.1741   0.1625   0.1838
+## Detection Prevalence   0.2850   0.1932   0.1754   0.1625   0.1839
+## Balanced Accuracy      0.9996   0.9985   0.9985   0.9957   0.9999</code></pre>
 <p>Comparing statitics confirms our expectation that Random Forest is better than Tree algorithm. Random Forest yields Accuracy : 0.9969 with 95% CI : (0.9955, 0.998) Tree yields Accuracy : 0.8304 with 95% CI : (0.8219, 0.8386) Our choise is Random Forest</p>
 </div>
-<div id="decide-what-to-do-about-cross-validation-in-relation-with-chosen-machine-learning-algorithm" class="section level3">
-<h3>7.decide what to do about cross-validation (in relation with chosen machine learning algorithm);</h3>
-<p>As mentioned above Random Forest yields Accuracy : 0.9969 with 95% CI : (0.9955, 0.998). It is almost bug-free Beside that the Random Forest algorith uses itself</p>
 </div>
-<div id="averages-cycle-results-cross-validation" class="section level3">
-<h3>6. averages cycle results (cross-validation);</h3>
+<div id="average-cycle-results-k--fold-cross-validation-k4" class="section level3">
+<h3>6. Average cycle results (k- fold cross-validation k=4);</h3>
+<pre class="r"><code>for (i in 1:4) {
+training.training &lt;- training.dummy[folds.trn[[i]],]
+training.testing &lt;- training.dummy[folds.tst[[i]],]
+
+modelRF0 &lt;- randomForest(classe ~ ., data = training.training, na.action = na.omit, ntree=1000)
+aaRF0 &lt;- predict(modelRF0, newdata = training.testing, type = &quot;class&quot;)
+
+confusionMatrix(aaRF0, training.testing$classe)[[3]]}</code></pre>
+<p>Summary cycle accuracy 0. Accuracy Kappa AccuracyLower AccuracyUpper 1. 0.9997962 0.9997422 0.9988648 0.9999948 2. 0.9997961 0.9997421 0.9988646 0.9999948 3. 0.9997961 0.9997421 0.9988646 0.9999948 4. 1.0000000 1.0000000 0.9992484 1.0000000</p>
 </div>
 <div id="use-chosen-machine-learning-algorithm-to-predict-results-on-testing-dataset" class="section level3">
-<h3>8. use chosen machine learning algorithm to predict results on testing dataset</h3>
+<h3>7. use chosen machine learning algorithm to predict results on testing dataset</h3>
 <pre class="r"><code>aaRF1 &lt;- predict(modelRF0, newdata = testing.dummy, type = &quot;class&quot;)</code></pre>
 </div>
 <div id="submit-results-of-prediction-of-20-test-cases-to-evaluate." class="section level3">
-<h3>9. Submit results of prediction of 20 test cases to evaluate.</h3>
+<h3>8. Submit results of prediction of 20 test cases to evaluate.</h3>
 <pre class="r"><code>answers = as.character(aaRF1)
 
 pml_write_files = function(x){
@@ -242,7 +251,6 @@ pml_write_files = function(x){
     }
 }
 pml_write_files(answers)</code></pre>
-<p>Do the authors describe what they expect the out of sample error to be and estimate the error appropriately with cross-validation?</p>
 </div>
 </div>
 
