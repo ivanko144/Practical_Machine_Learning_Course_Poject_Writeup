@@ -1,2 +1,4 @@
-# Practical_Machine_Learning_Course_Poject_Writeup
-Practical_Machine_Learning_Course_Poject_Writeup (Prediction Assignment Writeup)
+# Practical Machine Learning Course
+## Poject Writeup
+Practical Machine Learning Course 
+Poject Writeup (Prediction Assignment Writeup)
