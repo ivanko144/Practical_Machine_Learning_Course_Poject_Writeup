@@ -1,0 +1,161 @@
+---
+title: "Practical Machine Learning Course Project Writeup"
+author: "Ivan Kalyuzhnyy"
+date: "26 Jul 2015"
+output: html_document
+---
+
+##Background
+
+Using devices such as Jawbone Up, Nike FuelBand, and Fitbit it is now possible to collect a large amount of data about personal activity relatively inexpensively. These type of devices are part of the quantified self movement – a group of enthusiasts who take measurements about themselves regularly to improve their health, to find patterns in their behavior, or because they are tech geeks. One thing that people regularly do is quantify how much of a particular activity they do, but they rarely quantify how well they do it. In this project, our goal will be to use data from accelerometers on the belt, forearm, arm, and dumbell of 6 participants. They were asked to perform barbell lifts correctly and incorrectly in 5 different ways. More information is available from the website here: [http://groupware.les.inf.puc-rio.br/har](http://groupware.les.inf.puc-rio.br/har)
+
+
+##Overview:
+
+The goal of your project is to predict the manner in which participants did the exercise. This is the “classe” variable in the training set.
+
+The training data for this project are available here: [https://d396qusza40orc.cloudfront.net/predmachlearn/pml-training.csv](https://d396qusza40orc.cloudfront.net/predmachlearn/pml-training.csv)
+
+The test data are available here: [https://d396qusza40orc.cloudfront.net/predmachlearn/pml-testing.csv](https://d396qusza40orc.cloudfront.net/predmachlearn/pml-testing.csv)
+
+
+We will: 
+1. load the data; 
+2. clean the source data; 
+3. remove near zero variance variables (if any exists); 
+4. deal with non-numeric variables (if any exists) 
+6. prepare for cross-validation 
+6. Processing cycle
+6.1 splitting data into training part and testing part
+6.3 try different machine learning algorithms; 
+7. averages cycle results (cross-validation); 
+8. use chosen machine learning algorithm to predict results on testing dataset
+
+At the end we will also submit results of prediction of 20 test cases to evaluate.
+
+##Processing
+### 1. Load prerequisites and data
+```{r, results='hide', message=FALSE}
+# 1.0. Load prerequisites
+library(caret); library(rpart); library(randomForest); set.seed(3433)
+# 1.1.load data
+training <- read.csv("pml-training.csv", header = TRUE, na.strings=c("NA","NaN","#DIV/0!", ""))
+testing <- read.csv("pml-testing.csv", header = TRUE, na.strings=c("NA","NaN","#DIV/0!", ""))
+```
+
+### 2. Cleaning data
+Throw out columns which obviously redundant. Column #3 ("X") is row number, columns #5 ("cvtd_timestamp") is result of convertation of columns #3 and #4 (raw timestamp))
+```{r}
+training <- training[,-c(1,5)] ; testing <- testing[, -c(1,5)]
+```
+Throw out columns which contain more than 90% of NA. Without this step the same approach can attain prediction accuracy about only 80% for random forest algorithm and about only 75% for tree algorithm.
+In testing data correspond columns contains only NA, so such approach is reasonable.
+```{r}
+row.number <- nrow(training); col.isNA.idx <- NULL
+for (i in 1:ncol(training)-1) {
+    if (sum(is.na(training[, i])) / row.number >= 0.9) {col.isNA.idx <- c(col.isNA.idx, i)}
+}
+training <- training[, -col.isNA.idx]; testing <- testing[, -col.isNA.idx]
+```
+### 3. remove near zero variance variables (if any exists); 
+```{r}
+problematic.idx <- nearZeroVar(training, saveMetrics = FALSE)
+training <- training[, -problematic.idx]; testing <- testing[, -problematic.idx]
+```
+### 4 Deal with non-numeric variables (if any exists) 
+Finding factors
+```{r}
+col.classes <- as.data.frame(lapply(training, FUN = class))
+col.classes.isFactor <- which(col.classes=="factor")
+colnames(training[col.classes.isFactor]); col.classes.isFactor
+```
+Replace factor variables with dummyVar
+```{r}
+#create dummyVar object for training data
+training.dummyObj <- dummyVars(classe ~ user_name , data = training) 
+training.dummy <- cbind(predict(training.dummyObj, newdata=training), training[, -1])
+
+#create dummyVar object for testing data
+testing.dummyObj <- dummyVars(~ user_name , data = testing) 
+#replace factors with ...
+testing.dummy <- cbind(predict(testing.dummyObj, newdata=testing), testing[, -1])
+```
+
+### 4. Prepare for cross-validation (K-Fold k=4)
+We prepare 4 folds from training dataset and run processing cycle in each folder. Then we average results.
+
+```{r}
+folds.trn <- createFolds(y=training.dummy$classe,k=4,list=TRUE,returnTrain=TRUE)
+folds.tst <- createFolds(y=training.dummy$classe,k=4,list=TRUE,returnTrain=FALSE)
+#run start cycle on training dataset with random splitting
+```
+
+### 5. Processing cycle
+
+#### 5.1 Splitting data (60% training, 40% testing)
+```{r}
+inTrain <- createDataPartition(y=training.dummy$classe, times=1, p=0.6, list=FALSE)
+training.training <- training.dummy[inTrain,]
+training.testing <- training.dummy[-inTrain,]
+```
+
+#### 5.2 Try different machine learning algorithms; 
+Tree 
+```{r}
+modelTree0 <- rpart(classe ~ ., method = "class", data = training.training)
+aaTree0 <- predict(modelTree0, newdata = training.testing, type = "class")
+```
+RandomForest
+```{r}
+modelRF0 <- randomForest(classe ~ ., data = training.training, na.action = na.omit, ntree=1000)
+aaRF0 <- predict(modelRF0, newdata = training.testing, type = "class")
+```
+#### 5.3 Check quality
+```{r}
+confusionMatrix(aaTree0, training.testing$classe)
+confusionMatrix(aaRF0, training.testing$classe)
+```
+Comparing statitics confirms our expectation that Random Forest is better than Tree algorithm.
+Random Forest yields Accuracy : 0.9969 with 95% CI : (0.9955, 0.998) 
+Tree yields Accuracy : 0.8304  with 95% CI : (0.8219, 0.8386)
+Our choise is Random Forest
+
+### 6. Average cycle results (k- fold cross-validation k=4); 
+```{r, eval=FALSE}
+for (i in 1:4) {
+training.training <- training.dummy[folds.trn[[i]],]
+training.testing <- training.dummy[folds.tst[[i]],]
+
+modelRF0 <- randomForest(classe ~ ., data = training.training, na.action = na.omit, ntree=1000)
+aaRF0 <- predict(modelRF0, newdata = training.testing, type = "class")
+
+confusionMatrix(aaRF0, training.testing$classe)[[3]]}
+```
+Summary cycle accuracy
+
+0.  Accuracy     Kappa AccuracyLower AccuracyUpper
+
+1.  0.9997962 0.9997422     0.9988648     0.9999948
+2.  0.9997961 0.9997421     0.9988646     0.9999948
+3.  0.9997961 0.9997421     0.9988646     0.9999948
+4.  1.0000000 1.0000000     0.9992484     1.0000000
+
+### 7. use chosen machine learning algorithm to predict results on testing dataset
+```{r}
+aaRF1 <- predict(modelRF0, newdata = testing.dummy, type = "class")
+```
+
+### 8. Submit results of prediction of 20 test cases to evaluate.
+```{r}
+answers = as.character(aaRF1)
+
+pml_write_files = function(x){
+    n = length(x)
+    for(i in 1:n){
+        filename = paste0("problem_id_",i,".txt")
+        write.table(x[i],file=filename,quote=FALSE,row.names=FALSE,col.names=FALSE)
+    }
+}
+pml_write_files(answers)
+```
+
